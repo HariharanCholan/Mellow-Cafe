@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.18.0",
+    "razorpay": "^2.9.6"
+  }
+}
