@@ -1,4 +1,16 @@
 {
+  "name": "mellow-cafe-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "Client",
+    "Server"
+  ],
+  "scripts": {
+    "install-all": "npm install",
+    "dev": "npm run dev --workspace=mellow-cafe",
+    "start": "npm run start --workspace=server"
+  },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.5",
