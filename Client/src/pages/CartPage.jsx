@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet';
 import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Clock } from 'lucide-react';
+import API_BASE_URL from '@/config/api';
 
 const CartPage = () => {
   const { cartItems, cartTotal, updateQuantity, removeFromCart, cartCount, clearCart } = useCart();
@@ -18,7 +19,7 @@ const CartPage = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/payment/create-order", {
+      const res = await fetch(`${API_BASE_URL}/api/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: cartTotal }),
@@ -36,7 +37,7 @@ const CartPage = () => {
 
         handler: async function (response) {
           try {
-            const verifyRes = await fetch("http://localhost:5000/api/payment/verify", {
+            const verifyRes = await fetch(`${API_BASE_URL}/api/payment/verify`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, Heart, RotateCcw, Plus, LogOut } from 'lucide-react';
+import API_BASE_URL from "@/config/api";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState(null);
@@ -29,7 +30,7 @@ const ProfilePage = () => {
   const fetchProfile = async () => {
     if (!email) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/profile/${email}`);
+      const res = await fetch(`${API_BASE_URL}/api/profile/${email}`);
       const data = await res.json();
       setProfile(data.profile);
     } catch (err) {
@@ -40,7 +41,7 @@ const ProfilePage = () => {
   const fetchOrders = async () => {
     if (!email) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/profile/orders/${email}`);
+      const res = await fetch(`${API_BASE_URL}/api/profile/orders/${email}`);
       const data = await res.json();
       setOrders(data.orders || []);
 

@@ -6,6 +6,7 @@ import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
+import API_BASE_URL from '@/config/api';
 
 const OrderConfirmationPage = () => {
   const { clearCart, cartItems, totalAmount } = useCart();
@@ -19,7 +20,7 @@ const OrderConfirmationPage = () => {
       try {
         const userEmail = localStorage.getItem('userEmail') || 'guest@mellowcafe.com';
 
-        const res = await fetch('http://localhost:5000/api/order', {
+        const res = await fetch(`${API_BASE_URL}/api/order`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

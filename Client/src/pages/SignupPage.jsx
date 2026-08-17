@@ -9,6 +9,7 @@ import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { useToast } from "../components/ui/use-toast";
 import { Coffee } from "lucide-react";
+import API_BASE_URL from "@/config/api";
 
 // Google signup (keep if needed)
 import { auth, provider } from "../firebase";
@@ -26,9 +27,12 @@ const SignupPage = () => {
     agree: false,
   });
 
+  /* ---------------------------------------------------
+      OTP STATES
+  ----------------------------------------------------- */
   const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [token, setToken] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
 
   /* ---------------------------------------------------
@@ -69,7 +73,7 @@ const SignupPage = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/send-otp", {
+      const res = await fetch(`${API_BASE_URL}/send-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +103,7 @@ const SignupPage = () => {
   ----------------------------------------------------- */
   const verifyOTP = async () => {
     try {
-      const res = await fetch("http://localhost:5000/verify-otp", {
+      const res = await fetch(`${API_BASE_URL}/verify-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -161,7 +165,7 @@ const SignupPage = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

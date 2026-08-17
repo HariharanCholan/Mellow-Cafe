@@ -1,4 +1,4 @@
-﻿# dependencies
+# dependencies
 node_modules/
 **/node_modules/
 
@@ -12,12 +12,14 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+Server/.env
 
 # build output
 dist/
 build/
 .vite/
 .DS_Store
+.vercel
 
 # secrets
 firebase-service-account.json

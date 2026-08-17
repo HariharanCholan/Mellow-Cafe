@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Coffee } from "lucide-react";
+import API_BASE_URL from "@/config/api";
 
 import { auth, provider } from "../firebase";
 import { signInWithPopup } from "firebase/auth";
@@ -44,7 +45,7 @@ const payload = {
 
 console.log("Google Payload:", payload); // debug
 
-const response = await fetch("http://localhost:5000/api/auth/google-login", {
+const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
@@ -82,7 +83,7 @@ const response = await fetch("http://localhost:5000/api/auth/google-login", {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
 
         method: "POST",
         headers: { "Content-Type": "application/json" },

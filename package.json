@@ -7,9 +7,9 @@
     "Server"
   ],
   "scripts": {
-    "install-all": "npm install",
-    "dev": "npm run dev --workspace=mellow-cafe",
-    "start": "npm run start --workspace=server"
+    "build": "cd Client && npm run build",
+    "dev": "npm run dev --workspace=Client",
+    "start": "node Server/server.cjs"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.3",

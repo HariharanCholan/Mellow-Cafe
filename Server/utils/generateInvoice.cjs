@@ -1,12 +1,21 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 const generateInvoice = (order) => {
-  const invoicesDir = path.join(__dirname, "../invoices");
+  let invoicesDir = path.join(__dirname, "../invoices");
 
-  if (!fs.existsSync(invoicesDir)) {
-    fs.mkdirSync(invoicesDir);
+  try {
+    if (!fs.existsSync(invoicesDir)) {
+      fs.mkdirSync(invoicesDir, { recursive: true });
+    }
+  } catch (err) {
+    // In serverless / read-only environment, fallback to system temp directory
+    invoicesDir = path.join(os.tmpdir(), "invoices");
+    if (!fs.existsSync(invoicesDir)) {
+      fs.mkdirSync(invoicesDir, { recursive: true });
+    }
   }
 
   const fileName = `invoice_${order._id}.pdf`;
@@ -19,18 +28,20 @@ const generateInvoice = (order) => {
   doc.moveDown();
 
   doc.fontSize(12).text(`Order ID: ${order._id}`);
-  doc.text(`Payment ID: ${order.paymentId}`);
+  doc.text(`Payment ID: ${order.paymentId || 'N/A'}`);
   doc.text(`Customer: ${order.userEmail}`);
   doc.text(`Date: ${new Date().toLocaleString()}`);
   doc.moveDown();
 
   doc.text("Items:");
-  order.items.forEach(item => {
-    doc.text(`${item.name} - ₹${item.price} x ${item.quantity}`);
-  });
+  if (Array.isArray(order.items)) {
+    order.items.forEach(item => {
+      doc.text(`${item.name} - ₹${item.price} x ${item.quantity}`);
+    });
+  }
 
   doc.moveDown();
-  doc.text(`Total: ₹${order.totalAmount}`);
+  doc.text(`Total: ₹${order.totalAmount || order.total}`);
 
   doc.end();
 
