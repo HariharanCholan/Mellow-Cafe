@@ -13,30 +13,26 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.cjs"
+      "source": "/api/(.*)",
+      "destination": "/api/index.cjs"
     },
     {
-      "src": "/send-otp",
-      "dest": "/api/index.cjs"
+      "source": "/send-otp",
+      "destination": "/api/index.cjs"
     },
     {
-      "src": "/verify-otp",
-      "dest": "/api/index.cjs"
+      "source": "/verify-otp",
+      "destination": "/api/index.cjs"
     },
     {
-      "src": "/invoices/(.*)",
-      "dest": "/api/index.cjs"
+      "source": "/invoices/(.*)",
+      "destination": "/api/index.cjs"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/Client/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/Client/$1"
+      "source": "/(.*)",
+      "destination": "/Client/index.html"
     }
   ]
 }
