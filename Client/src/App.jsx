@@ -16,6 +16,10 @@ function RootWrapper({ children }) {
   const location = useLocation();
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const splashShown = sessionStorage.getItem("splashShown");
     // Redirect to splash if not yet shown during this session and trying to access main app pages
     const isMainAppRoute = location.pathname === "/" || 
