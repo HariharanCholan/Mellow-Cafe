@@ -31,8 +31,16 @@
       "destination": "/api/index.cjs"
     },
     {
-      "source": "/(.*)",
+      "source": "/(assets/.*)",
+      "destination": "/Client/$1"
+    },
+    {
+      "source": "/([^.]*)",
       "destination": "/Client/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/Client/$1"
     }
   ]
 }
