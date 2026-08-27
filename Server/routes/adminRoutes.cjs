@@ -54,6 +54,16 @@ router.get("/verify-setup-token", async (req, res) => {
       return res.status(400).json({ message: "Invalid setup token" });
     }
 
+    // Check if the setup link has already been used
+    if (decoded.requestId) {
+      const adminReq = await AdminRequest.findById(decoded.requestId);
+      if (adminReq && adminReq.isPasswordSet) {
+        return res.status(400).json({
+          message: "This setup link has already been used. Please log in with your credentials.",
+        });
+      }
+    }
+
     res.json({
       valid: true,
       email: decoded.email,
@@ -87,6 +97,16 @@ router.post("/setup-password", async (req, res) => {
       return res.status(400).json({ message: "Invalid setup token" });
     }
 
+    // Check if link was already used
+    if (decoded.requestId) {
+      const adminReq = await AdminRequest.findById(decoded.requestId);
+      if (adminReq && adminReq.isPasswordSet) {
+        return res.status(400).json({
+          message: "This setup link has already been used. Please log in directly.",
+        });
+      }
+    }
+
     // Optional OTP verification if otp & otpToken were provided
     if (otp && otpToken) {
       try {
@@ -116,6 +136,14 @@ router.post("/setup-password", async (req, res) => {
         password: hashedPassword,
         role: decoded.role,
         provider: "local",
+      });
+    }
+
+    // Invalidate setup token by marking isPasswordSet on the request
+    if (decoded.requestId) {
+      await AdminRequest.findByIdAndUpdate(decoded.requestId, {
+        isPasswordSet: true,
+        setupCompletedAt: new Date(),
       });
     }
 
@@ -295,6 +323,70 @@ router.post(
 );
 
 /**
+ * POST /api/admin/requests/:id/change-role
+ * Super Admin only — change the role of an approved user
+ */
+router.post(
+  "/requests/:id/change-role",
+  verifyToken,
+  requireRole("super_admin"),
+  async (req, res) => {
+    try {
+      const { role } = req.body;
+      const validRoles = ["worker", "staff", "admin", "super_admin"];
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const request = await AdminRequest.findById(req.params.id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+
+      request.assignedRole = role;
+      await request.save();
+
+      // Update role in User database
+      await User.findOneAndUpdate(
+        { email: request.email },
+        { role },
+        { upsert: false }
+      );
+
+      res.json({ message: `Role successfully updated to ${role}`, role });
+    } catch (err) {
+      console.error("Change role error:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/requests/:id/revoke
+ * Super Admin only — revoke approval and remove/downgrade the user from database
+ */
+router.post(
+  "/requests/:id/revoke",
+  verifyToken,
+  requireRole("super_admin"),
+  async (req, res) => {
+    try {
+      const request = await AdminRequest.findById(req.params.id);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+
+      request.status = "revoked";
+      await request.save();
+
+      // Remove user account or remove admin role from DB
+      await User.findOneAndDelete({ email: request.email });
+
+      res.json({ message: `Access revoked and user ${request.email} removed from database.` });
+    } catch (err) {
+      console.error("Revoke access error:", err);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+/**
  * GET /api/admin/stats
  * Admin/Super Admin — analytics data for the dashboard
  */
@@ -418,6 +510,71 @@ router.put(
     } catch (err) {
       console.error("Update menu item error:", err);
       res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/menu
+ * Admin/Super Admin — create a new menu item
+ */
+router.post(
+  "/menu",
+  verifyToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { name, categoryId, price, stock, size, options } = req.body;
+
+      if (!name || !categoryId || price === undefined || price === null || price === "") {
+        return res.status(400).json({ message: "Name, category, and price are required" });
+      }
+
+      // Auto-compute next sequential itemId
+      const lastItem = await MenuItem.findOne({}).sort({ itemId: -1 });
+      const nextItemId = (lastItem?.itemId || 0) + 1;
+
+      const formattedOptions = Array.isArray(options)
+        ? options
+        : typeof options === "string" && options.trim()
+        ? options.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+
+      const newItem = await MenuItem.create({
+        itemId: nextItemId,
+        name: name.trim(),
+        categoryId: categoryId.trim(),
+        price: Number(price),
+        stock: Number(stock) || 0,
+        size: size ? size.trim() : null,
+        options: formattedOptions,
+      });
+
+      res.status(201).json({ message: "Menu item added successfully", item: newItem });
+    } catch (err) {
+      console.error("Create menu item error:", err);
+      res.status(500).json({ message: "Server error creating menu item" });
+    }
+  }
+);
+
+/**
+ * DELETE /api/admin/menu/:itemId
+ * Admin/Super Admin — delete a menu item
+ */
+router.delete(
+  "/menu/:itemId",
+  verifyToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const item = await MenuItem.findOneAndDelete({ itemId: Number(req.params.itemId) });
+      if (!item) return res.status(404).json({ message: "Item not found" });
+
+      res.json({ message: `"${item.name}" deleted successfully` });
+    } catch (err) {
+      console.error("Delete menu item error:", err);
+      res.status(500).json({ message: "Server error deleting item" });
     }
   }
 );

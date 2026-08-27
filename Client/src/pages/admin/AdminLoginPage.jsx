@@ -46,7 +46,16 @@ const AdminLoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
       <Card className="w-full max-w-md shadow-lg border border-stone-200/80 bg-white">
-        <CardHeader className="text-center pt-8">
+        <div className="p-4 pb-0 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="text-xs font-medium text-stone-500 hover:text-amber-800 transition-colors"
+          >
+            &larr; Back to Login
+          </button>
+        </div>
+        <CardHeader className="text-center pt-4">
           <CardTitle className="text-2xl font-bold font-serif text-stone-900">Admin Portal Login</CardTitle>
           <p className="text-sm text-stone-500 mt-1">Enter admin credentials to access the dashboard</p>
         </CardHeader>

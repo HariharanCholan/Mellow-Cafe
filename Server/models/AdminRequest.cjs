@@ -7,12 +7,20 @@ const adminRequestSchema = new mongoose.Schema(
     reason: { type: String, default: "" },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "revoked"],
       default: "pending",
     },
     assignedRole: {
       type: String,
       enum: ["worker", "staff", "admin", "super_admin", null],
+      default: null,
+    },
+    isPasswordSet: {
+      type: Boolean,
+      default: false,
+    },
+    setupCompletedAt: {
+      type: Date,
       default: null,
     },
   },

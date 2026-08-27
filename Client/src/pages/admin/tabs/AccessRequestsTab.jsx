@@ -8,6 +8,7 @@ const AccessRequestsTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [roleMap, setRoleMap] = useState({});
+  const [historyRoleMap, setHistoryRoleMap] = useState({});
   const [working, setWorking] = useState({});
   const [actionMsg, setActionMsg] = useState({});
 
@@ -19,7 +20,14 @@ const AccessRequestsTab = () => {
         return r.json();
       })
       .then((data) => {
-        setRequests(data.requests || []);
+        const reqs = data.requests || [];
+        setRequests(reqs);
+        // Initialize role maps
+        const hMap = {};
+        reqs.forEach((r) => {
+          if (r.assignedRole) hMap[r._id] = r.assignedRole;
+        });
+        setHistoryRoleMap(hMap);
         setLoading(false);
       })
       .catch((err) => {
@@ -31,10 +39,15 @@ const AccessRequestsTab = () => {
 
   useEffect(() => { fetchRequests(); }, []);
 
-  const handleAction = async (id, action) => {
+  const handleAction = async (id, action, customBody = null) => {
     setWorking((prev) => ({ ...prev, [id]: true }));
     try {
-      const body = action === 'approve' ? { role: roleMap[id] || 'staff' } : {};
+      let body = customBody;
+      if (!body) {
+        if (action === 'approve') body = { role: roleMap[id] || 'staff' };
+        else body = {};
+      }
+
       const res = await authFetch(`${API_BASE_URL}/api/admin/requests/${id}/${action}`, {
         method: 'POST',
         body: JSON.stringify(body),
@@ -53,6 +66,18 @@ const AccessRequestsTab = () => {
     }
   };
 
+  const handleChangeRole = (id) => {
+    const newRole = historyRoleMap[id];
+    if (!newRole) return;
+    handleAction(id, 'change-role', { role: newRole });
+  };
+
+  const handleRevoke = (id, email) => {
+    if (window.confirm(`Are you sure you want to revoke access and remove ${email} from the database?`)) {
+      handleAction(id, 'revoke');
+    }
+  };
+
   const fmt = (ts) => {
     if (!ts) return '—';
     return new Date(ts).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -68,7 +93,7 @@ const AccessRequestsTab = () => {
     <div>
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--admin-text)', margin: 0 }}>
-          Access Requests
+          Access Requests &amp; Role Management
           {pending.length > 0 && (
             <span style={{
               background: '#92400e', color: '#fff', borderRadius: 999,
@@ -83,8 +108,8 @@ const AccessRequestsTab = () => {
       {/* Pending requests */}
       {pending.length === 0 ? (
         <div className="section-card">
-          <div className="admin-empty" style={{ padding: '32px 0' }}>
-            <p style={{ fontSize: '1.5rem', marginBottom: 8 }}>✅</p>
+          <div className="admin-empty" style={{ padding: '24px 0' }}>
+            <p style={{ fontSize: '1.4rem', marginBottom: 6 }}>✅</p>
             <p style={{ fontWeight: 600 }}>No pending requests.</p>
           </div>
         </div>
@@ -157,11 +182,11 @@ const AccessRequestsTab = () => {
         </div>
       )}
 
-      {/* History */}
+      {/* History & Active Admins/Staff */}
       <div className="section-card">
-        <h2>📋 Request History</h2>
+        <h2>📋 User Access Control &amp; Request History</h2>
         {others.length === 0 ? (
-          <div className="admin-empty">No past requests.</div>
+          <div className="admin-empty">No past requests or active users.</div>
         ) : (
           <table className="admin-table">
             <thead>
@@ -169,20 +194,92 @@ const AccessRequestsTab = () => {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Status</th>
-                <th>Assigned Role</th>
-                <th>Date</th>
+                <th>Current Role</th>
+                <th>Setup Status</th>
+                <th>Change Role / Revoke</th>
               </tr>
             </thead>
             <tbody>
-              {others.map((req) => (
-                <tr key={req._id}>
-                  <td style={{ fontWeight: 500 }}>{req.name}</td>
-                  <td style={{ fontSize: '.78rem', color: 'var(--admin-muted)' }}>{req.email}</td>
-                  <td><span className={`badge badge-${req.status}`}>{req.status}</span></td>
-                  <td style={{ fontSize: '.78rem' }}>{req.assignedRole || '—'}</td>
-                  <td style={{ fontSize: '.75rem', color: 'var(--admin-muted)' }}>{fmt(req.createdAt)}</td>
-                </tr>
-              ))}
+              {others.map((req) => {
+                const isApproved = req.status === 'approved';
+                return (
+                  <tr key={req._id}>
+                    <td style={{ fontWeight: 500 }}>{req.name}</td>
+                    <td style={{ fontSize: '.78rem', color: 'var(--admin-muted)' }}>{req.email}</td>
+                    <td>
+                      <span className={`badge badge-${req.status}`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td>
+                      {isApproved ? (
+                        <select
+                          value={historyRoleMap[req._id] || req.assignedRole || 'staff'}
+                          onChange={(e) => setHistoryRoleMap((prev) => ({ ...prev, [req._id]: e.target.value }))}
+                          style={{
+                            padding: '3px 6px',
+                            border: '1px solid var(--admin-border)',
+                            borderRadius: 4,
+                            fontSize: '.78rem',
+                            background: 'var(--admin-bg)',
+                            color: 'var(--admin-text)',
+                          }}
+                        >
+                          {VALID_ROLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span style={{ fontSize: '.78rem', color: 'var(--admin-muted)' }}>{req.assignedRole || '—'}</span>
+                      )}
+                    </td>
+                    <td>
+                      {isApproved ? (
+                        req.isPasswordSet ? (
+                          <span style={{ color: '#059669', fontSize: '.75rem', fontWeight: 600 }}>
+                            ✓ Active (Password Set)
+                          </span>
+                        ) : (
+                          <span style={{ color: '#d97706', fontSize: '.75rem' }}>
+                            ⏳ Invite Sent (Pending Setup)
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ color: 'var(--admin-muted)', fontSize: '.75rem' }}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      {isApproved ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            className="btn-primary"
+                            style={{ fontSize: '.75rem', padding: '4px 8px' }}
+                            disabled={working[req._id] || historyRoleMap[req._id] === req.assignedRole}
+                            onClick={() => handleChangeRole(req._id)}
+                          >
+                            Update Role
+                          </button>
+                          <button
+                            className="btn-danger"
+                            style={{ fontSize: '.75rem', padding: '4px 8px' }}
+                            disabled={working[req._id]}
+                            onClick={() => handleRevoke(req._id, req.email)}
+                          >
+                            Revoke &amp; Delete User
+                          </button>
+                          {actionMsg[req._id] && (
+                            <span style={{ fontSize: '.72rem', color: actionMsg[req._id].startsWith('✓') ? '#059669' : '#dc2626' }}>
+                              {actionMsg[req._id]}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--admin-muted)', fontSize: '.75rem' }}>{fmt(req.updatedAt || req.createdAt)}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
