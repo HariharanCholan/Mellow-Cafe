@@ -6,6 +6,7 @@ import AdminRoute from '@/components/AdminRoute';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminRequestPage from "@/pages/admin/AdminRequestPage";
 import AdminLoginPage from "@/pages/admin/AdminLoginPage";
+import AdminSetupPasswordPage from "@/pages/admin/AdminSetupPasswordPage";
 import SplashPage from "@/pages/SplashPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -50,6 +51,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin-request" element={<AdminRequestPage />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route path="/admin/setup-password" element={<AdminSetupPasswordPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
           {/* Admin Dashboard Route */}
