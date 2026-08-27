@@ -1,38 +1,46 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, DoughnutController, ArcElement, LineController, LineElement, PointElement } from 'chart.js';
-import API_BASE_URL from '@/config/api';
+import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineController, LineElement, PointElement } from 'chart.js';
+import API_BASE_URL, { authFetch } from '@/config/api';
 
-Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, DoughnutController, ArcElement, LineController, LineElement, PointElement);
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, LineController, LineElement, PointElement);
 
 const AnalyticsTab = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const barRef = useRef(null);
   const lineRef = useRef(null);
   const barChart = useRef(null);
   const lineChart = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    fetch(`${API_BASE_URL}/api/admin/stats`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
+    authFetch(`${API_BASE_URL}/api/admin/stats`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setStats(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error('Analytics fetch error:', err);
+        setError(err.message);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
     if (!stats) return;
 
+    // Destroy old charts before redrawing
+    if (barChart.current) { barChart.current.destroy(); barChart.current = null; }
+    if (lineChart.current) { lineChart.current.destroy(); lineChart.current = null; }
+
     // Top items bar chart
-    if (barRef.current) {
-      if (barChart.current) barChart.current.destroy();
-      const labels = (stats.topItems || []).map((i) => i.name);
-      const data = (stats.topItems || []).map((i) => i.count);
+    if (barRef.current && stats.topItems?.length > 0) {
+      const labels = stats.topItems.map((i) => i.name);
+      const data   = stats.topItems.map((i) => i.count);
       barChart.current = new Chart(barRef.current, {
         type: 'bar',
         data: {
@@ -55,10 +63,9 @@ const AnalyticsTab = () => {
     }
 
     // Revenue by day line chart
-    if (lineRef.current && stats.revenueByDay) {
-      if (lineChart.current) lineChart.current.destroy();
+    if (lineRef.current && stats.revenueByDay && Object.keys(stats.revenueByDay).length > 0) {
       const sortedDays = Object.keys(stats.revenueByDay).sort();
-      const revData = sortedDays.map((d) => stats.revenueByDay[d]);
+      const revData    = sortedDays.map((d) => stats.revenueByDay[d]);
       lineChart.current = new Chart(lineRef.current, {
         type: 'line',
         data: {
@@ -83,61 +90,43 @@ const AnalyticsTab = () => {
   }, [stats]);
 
   if (loading) return <div className="admin-loading">Loading analytics…</div>;
-  if (!stats) return <div className="admin-empty">Could not load analytics data.</div>;
+  if (error)   return <div className="admin-empty">⚠️ Could not load analytics: {error}</div>;
 
   return (
     <div>
       {/* Stat cards */}
       <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📦</div>
-          <div className="stat-label">Total Orders</div>
-          <div className="stat-value">{stats.totalOrders ?? 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">💰</div>
-          <div className="stat-label">Total Revenue</div>
-          <div className="stat-value">₹{(stats.totalRevenue ?? 0).toLocaleString('en-IN')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📅</div>
-          <div className="stat-label">Today</div>
-          <div className="stat-value">{stats.todayOrders ?? 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📆</div>
-          <div className="stat-label">This Week</div>
-          <div className="stat-value">{stats.weekOrders ?? 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🗓️</div>
-          <div className="stat-label">This Month</div>
-          <div className="stat-value">{stats.monthOrders ?? 0}</div>
-        </div>
+        {[
+          { icon: '📦', label: 'Total Orders',  value: stats.totalOrders ?? 0 },
+          { icon: '💰', label: 'Total Revenue', value: `₹${(stats.totalRevenue ?? 0).toLocaleString('en-IN')}` },
+          { icon: '📅', label: 'Today',         value: stats.todayOrders ?? 0 },
+          { icon: '📆', label: 'This Week',     value: stats.weekOrders ?? 0 },
+          { icon: '🗓️', label: 'This Month',    value: stats.monthOrders ?? 0 },
+        ].map(({ icon, label, value }) => (
+          <div className="stat-card" key={label}>
+            <div className="stat-icon">{icon}</div>
+            <div className="stat-label">{label}</div>
+            <div className="stat-value">{value}</div>
+          </div>
+        ))}
       </div>
 
       {/* Top items chart */}
       <div className="section-card">
         <h2>🏆 Top Selling Items</h2>
-        {stats.topItems && stats.topItems.length > 0 ? (
-          <div className="chart-wrap">
-            <canvas ref={barRef} />
-          </div>
-        ) : (
-          <div className="admin-empty">No order data yet.</div>
-        )}
+        {stats.topItems?.length > 0
+          ? <div className="chart-wrap"><canvas ref={barRef} /></div>
+          : <div className="admin-empty">No order data yet.</div>
+        }
       </div>
 
-      {/* Revenue trend chart */}
+      {/* Revenue trend */}
       <div className="section-card">
         <h2>📈 Revenue Trend (Last 30 Days)</h2>
-        {stats.revenueByDay && Object.keys(stats.revenueByDay).length > 0 ? (
-          <div className="chart-wrap">
-            <canvas ref={lineRef} />
-          </div>
-        ) : (
-          <div className="admin-empty">No revenue data yet.</div>
-        )}
+        {stats.revenueByDay && Object.keys(stats.revenueByDay).length > 0
+          ? <div className="chart-wrap"><canvas ref={lineRef} /></div>
+          : <div className="admin-empty">No revenue data yet.</div>
+        }
       </div>
     </div>
   );
