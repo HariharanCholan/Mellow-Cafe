@@ -115,7 +115,7 @@ const itemsByCat = {
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 async function connect() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/mellowcafe';
+  const uri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/mellowcafe';
   await mongoose.connect(uri);
   console.log('✅ Connected to MongoDB');
 }
