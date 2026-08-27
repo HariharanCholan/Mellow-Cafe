@@ -1,0 +1,309 @@
+# Admin Dashboard — Complete Implementation Plan
+
+## Goal
+Build a full Admin Dashboard system for Mellow Cafe with:
+1. **Full menu migration** from static `menu.js` to MongoDB
+2. **Role-based access** (`user`, `worker`, `staff`, `admin`, `super_admin`)
+3. **Admin Request flow** — anyone can request access; only `super_admin` (`hariiiiii0519@gmail.com`) can approve and assign roles
+4. **Admin Portal login** on the Login page
+5. **Admin Dashboard** with analytics, stock/menu management, and request management
+
+---
+
+## Overview of What Changes
+
+| Layer | What changes |
+|---|---|
+| **Database** | New `Category`, `MenuItem`, `AdminRequest` models; `User` gets `role` field |
+| **Backend** | New `/api/menu` and `/api/admin/*` routes; auth routes return `role` |
+| **Frontend** | `menu.js` retired; menu fetched from API; Login page gets Admin flows; new Admin pages |
+
+---
+
+## Phase 1: Database — New & Updated Models
+
+### [MODIFY] `Server/models/User.cjs`
+Add `role` field to the existing schema:
+```js
+role: {
+  type: String,
+  enum: ['user', 'worker', 'staff', 'admin', 'super_admin'],
+  default: 'user'
+}
+```
+> Super Admin (`hariiiiii0519@gmail.com`) will have their role auto-set to `super_admin` at login time, not stored differently.
+
+---
+
+### [NEW] `Server/models/Category.cjs`
+Mirrors the `categories` array in `menu.js`. Each document is one category:
+```js
+{
+  id: String,          // e.g. "hot-cold" — used as slug
+  name: String,        // "Hot & Cold Beverages"
+  description: String,
+  image: String,
+  order: Number        // for controlling display order
+}
+```
+
+---
+
+### [NEW] `Server/models/MenuItem.cjs`
+Mirrors each item in the `items` object in `menu.js`:
+```js
+{
+  itemId: Number,      // original numeric ID from menu.js (1–98)
+  categoryId: String,  // e.g. "hot-cold"
+  name: String,
+  price: Number,
+  stock: Number,
+  size: String,        // optional, e.g. "1/2 Kg"
+  options: [String],   // optional flavor options, e.g. ["Vanilla", "Strawberry"]
+}
+```
+
+---
+
+### [NEW] `Server/models/AdminRequest.cjs`
+Tracks admin access requests submitted from the Login page:
+```js
+{
+  name: String,
+  email: String,
+  reason: String,       // optional — why they need access
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  assignedRole: String,  // set by super_admin when approving
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+---
+
+## Phase 2: Backend — One-Time Seeding Script
+
+### [NEW] `Server/scripts/seedMenu.cjs`
+A **one-time migration script** that reads the current `Client/src/data/menu.js` data and inserts all 13 categories and 98 menu items into MongoDB. This is run once manually, never deployed.
+
+```
+node Server/scripts/seedMenu.cjs
+```
+
+---
+
+## Phase 3: Backend — New & Updated API Routes
+
+### [NEW] `Server/middleware/auth.cjs`
+A reusable JWT middleware to protect admin routes. Since the current app does **not use JWT tokens** (it returns the raw user object and stores it in localStorage), we need to add JWT signing to login responses first:
+- `verifyToken(req, res, next)` — validates the JWT from the `Authorization` header.
+- `requireRole(...roles)` — checks that the token's role is in the allowed list.
+
+---
+
+### [MODIFY] `Server/routes/authroutes.cjs`
+Update all 3 login endpoints (`/login`, `/google-login`) to:
+1. Sign and return a **JWT token** containing `{ userId, email, role, name }`.
+2. Before signing the token, check: if `email === 'hariiiiii0519@gmail.com'`, force `role = 'super_admin'` and update the DB if needed.
+3. Return `{ message, user, token }` instead of just `{ message, user }`.
+
+Also remove the `createDefaultAdmin()` function from `app.cjs` — it is now obsolete.
+
+---
+
+### [NEW] `Server/routes/menuRoutes.cjs`
+Public routes for serving menu data to the frontend:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/menu/categories` | Returns all categories |
+| `GET` | `/api/menu/items/:categoryId` | Returns all items for a category |
+| `GET` | `/api/menu/all` | Returns full menu (categories + all items) in one call |
+
+---
+
+### [NEW] `Server/routes/adminRoutes.cjs`
+Protected routes for the admin dashboard:
+
+| Method | Endpoint | Role Required | Description |
+|---|---|---|---|
+| `POST` | `/api/admin/request` | Public | Submit an admin access request |
+| `GET` | `/api/admin/requests` | `super_admin` | Get all pending/past requests |
+| `POST` | `/api/admin/requests/:id/approve` | `super_admin` | Approve request, set role on User |
+| `POST` | `/api/admin/requests/:id/reject` | `super_admin` | Reject a request |
+| `GET` | `/api/admin/stats` | `admin`, `super_admin` | Analytics: orders, revenue, peak times |
+| `GET` | `/api/admin/menu` | `admin`, `super_admin`, `staff` | Fetch all menu items for the dashboard table |
+| `PUT` | `/api/admin/menu/:itemId` | `admin`, `super_admin` | Update stock and/or price for one item |
+| `GET` | `/api/admin/orders` | `admin`, `super_admin`, `staff` | Paginated list of all customer orders |
+
+---
+
+### [MODIFY] `Server/app.cjs`
+Register the new route files:
+```js
+const menuRoutes = require('./routes/menuRoutes.cjs');
+const adminRoutes = require('./routes/adminRoutes.cjs');
+
+app.use('/api/menu', menuRoutes);
+app.use('/api/admin', adminRoutes);
+```
+
+---
+
+## Phase 4: Frontend — Auth & Context Updates
+
+### [MODIFY] `Client/src/contexts/AuthContext.jsx`
+- Update `login()` to store the **JWT token** in `localStorage` alongside the user object.
+- Expose `user.role` from the context so all components can access it.
+- Add `isAdmin` and `isSuperAdmin` computed helpers for convenience.
+
+---
+
+### [MODIFY] `Client/src/config/api.js`
+- Add a helper `authFetch(url, options)` that automatically attaches the `Authorization: Bearer <token>` header to all admin API calls.
+
+---
+
+## Phase 5: Frontend — Menu Data Migration
+
+### [NEW] `Client/src/contexts/MenuContext.jsx`
+A React Context that:
+- On mount, calls `GET /api/menu/all` to fetch the full menu from MongoDB.
+- Stores `{ categories, items }` in state and provides them to any component that needs them.
+- Handles loading and error states.
+
+### [MODIFY] `Client/src/pages/HomePage.jsx`
+- Remove import of `menuData` from `@/data/menu`.
+- Use `useMenu()` hook from `MenuContext` instead.
+
+### [MODIFY] `Client/src/pages/CategoryPage.jsx`
+- Remove import of `menuData` from `@/data/menu`.
+- Use `useMenu()` hook from `MenuContext` instead.
+
+### [DELETE] `Client/src/data/menu.js` *(after confirming seeding worked)*
+- Retire the static file once MongoDB is seeded and all pages are using the API.
+
+---
+
+## Phase 6: Frontend — Login Page Updates
+
+### [MODIFY] `Client/src/pages/LoginPage.jsx`
+Add two new sections below the current login form:
+
+**Section 1 — Admin Request:**
+- A subtle link/button: *"Request Admin Access"*
+- Clicking opens an inline form (or navigates to `/admin-request`) with: Name, Email, optional Reason textarea, and a Submit button.
+- On submit → calls `POST /api/admin/request`.
+- Shows a success message: *"Your request has been sent. You'll be notified once approved."*
+
+**Section 2 — Admin Portal:**
+- A separate button: *"Admin Portal →"*
+- Clicking switches the main login card to an "Admin Login" view — same email/password form but:
+  - On successful login, checks `user.role`.
+  - If role is `super_admin`, `admin`, `staff`, or `worker` → redirect to `/admin`.
+  - If role is `user` → show an error: *"You don't have admin access yet. Request access below."*
+
+---
+
+## Phase 7: Frontend — Admin Routing & Protection
+
+### [NEW] `Client/src/components/AdminRoute.jsx`
+A route guard component:
+- If user is not logged in → redirect to `/login`.
+- If user's `role` is `user` → redirect to `/` with a toast: *"Access denied."*
+- If role is `worker`, `staff`, `admin`, or `super_admin` → render the protected page.
+
+### [MODIFY] `Client/src/App.jsx`
+Add the new protected admin routes:
+```jsx
+<Route path="/admin" element={<AdminRoute />}>
+  <Route index element={<AdminDashboard />} />
+</Route>
+<Route path="/admin-request" element={<AdminRequestPage />} />
+```
+
+---
+
+## Phase 8: Frontend — Admin Dashboard UI
+
+### [NEW] `Client/src/pages/admin/AdminDashboard.jsx`
+A premium dark-themed dashboard with a left sidebar (or top tabs on mobile).
+
+**Sidebar Tabs (visibility by role):**
+
+| Tab | Visible To |
+|---|---|
+| 📊 Analytics | `admin`, `super_admin` |
+| 📦 Stock & Menu | `worker`, `staff`, `admin`, `super_admin` |
+| 🧾 Orders | `staff`, `admin`, `super_admin` |
+| 👥 Access Requests | `super_admin` only |
+
+---
+
+#### Tab 1: Analytics (`/admin` → default view)
+Calls `GET /api/admin/stats`. Displays:
+- **Total Orders** card
+- **Total Revenue** card
+- **Orders today / this week / this month** cards
+- **Peak order hours** bar chart (using the `timestamp` field in `Orders`)
+- **Top selling items** list
+- **Revenue over time** line chart
+
+---
+
+#### Tab 2: Stock & Menu Management
+Calls `GET /api/admin/menu`. Displays:
+- A **table** with columns: Item Name | Category | Price (₹) | Stock | Actions
+- Admins can **inline-edit** Stock and Price fields directly in the table row.
+- Clicking **Save** calls `PUT /api/admin/menu/:itemId` to update MongoDB.
+- A **low stock warning** badge highlights items with `stock < 10`.
+
+---
+
+#### Tab 3: Orders
+Calls `GET /api/admin/orders`. Displays:
+- A **table** of all customer orders: Order ID | Customer Email | Items | Total | Date
+- Sortable by date.
+- Searchable by email.
+
+---
+
+#### Tab 4: Access Requests *(Super Admin only)*
+Calls `GET /api/admin/requests`. Displays:
+- A **table** of all admin access requests: Name | Email | Reason | Status | Date
+- Each pending request has an **Approve** button that opens a dropdown to select a role (`worker`, `staff`, `admin`, `super_admin`), and a **Reject** button.
+- Approved/Rejected requests are greyed out.
+
+---
+
+## Verification Plan
+
+### Step 1 — Seeding
+- Run `node Server/scripts/seedMenu.cjs` locally.
+- Verify MongoDB has 13 Category documents and 98 MenuItem documents.
+
+### Step 2 — Menu API
+- Hit `GET /api/menu/all` and confirm the response matches the original `menu.js` data.
+- Load the live site's Home and Category pages and confirm items display correctly.
+
+### Step 3 — Auth & Roles
+- Log in as `hariiiiii0519@gmail.com` and confirm the JWT contains `role: super_admin`.
+- Log in as a regular user and confirm `role: user`.
+
+### Step 4 — Admin Request Flow
+- Submit an admin request from the Login page.
+- Log in as Super Admin and confirm the request appears in the Requests tab.
+- Approve the request with role `staff`.
+- Log back in as the requesting user and confirm they can access `/admin`.
+
+### Step 5 — Stock Management
+- Update the stock of an item from the dashboard.
+- Refresh the customer-facing Category page and confirm the stock badge reflects the change.
+
+### Step 6 — Analytics
+- Place a test order.
+- Refresh the Analytics tab and confirm the order appears in the stats.

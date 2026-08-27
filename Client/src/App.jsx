@@ -2,6 +2,10 @@ import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 import Layout from "@/components/Layout";
+import AdminRoute from '@/components/AdminRoute';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminRequestPage from "@/pages/admin/AdminRequestPage";
+import AdminLoginPage from "@/pages/admin/AdminLoginPage";
 import SplashPage from "@/pages/SplashPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
@@ -44,7 +48,14 @@ function App() {
           {/* Public Routes */}
           <Route path="/splash" element={<SplashPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin-request" element={<AdminRequestPage />} />
+          <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+
+          {/* Admin Dashboard Route */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          </Route>
 
           {/* Main App with Layout */}
           <Route path="/" element={<Layout />}>

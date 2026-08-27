@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
@@ -23,14 +22,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (userData) => {
+  const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('mellowCafeUser', JSON.stringify(userData));
+    if (token) {
+      localStorage.setItem('mellowCafeToken', token);
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('mellowCafeUser');
+    localStorage.removeItem('mellowCafeToken');
     localStorage.removeItem('mellowCafeCart');
   };
 
@@ -45,12 +48,20 @@ export const AuthProvider = ({ children }) => {
     return newUser;
   };
 
+  // Convenience role helpers
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isStaff = ['worker', 'staff', 'admin', 'super_admin'].includes(user?.role);
+
   const value = {
     user,
     login,
     logout,
     register,
-    loading
+    loading,
+    isAdmin,
+    isSuperAdmin,
+    isStaff,
   };
 
   return (

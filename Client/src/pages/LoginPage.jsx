@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Coffee } from "lucide-react";
 import API_BASE_URL from "@/config/api";
 
@@ -34,22 +35,22 @@ const LoginPage = () => {
     try {
       const result = await signInWithPopup(auth, provider);
 
-const user = result.user;
+      const user = result.user;
 
-// 🔥 Send actual user data
-const payload = {
-  email: user.email,
-  name: user.displayName,
-  picture: user.photoURL,
-};
+      // 🔥 Send actual user data
+      const payload = {
+        email: user.email,
+        name: user.displayName,
+        picture: user.photoURL,
+      };
 
-console.log("Google Payload:", payload); // debug
+      console.log("Google Payload:", payload); // debug
 
-const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
-});
+      const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
 
@@ -62,7 +63,7 @@ const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
         return;
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      authLogin(data.user, data.token);
       toast({ title: "Logged in!", description: "Using Google" });
       navigate("/");
     } catch (err) {
@@ -101,7 +102,7 @@ const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
         return;
       }
 
-      localStorage.setItem("userEmail", data.user.email);
+      authLogin(data.user, data.token);
       toast({ title: "Success!", description: "Login successful" });
       navigate("/");
     } catch (error) {
@@ -120,8 +121,8 @@ const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
       </Helmet>
 
       <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
@@ -144,22 +145,22 @@ const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
 
                 <div className="space-y-1">
                   <Label htmlFor="email" className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    onChange={handleChange} 
-                    required 
+                  <Input
+                    id="email"
+                    type="email"
+                    onChange={handleChange}
+                    required
                     className="border-stone-200 focus-visible:ring-amber-800/20 focus-visible:border-amber-800 bg-stone-50/50"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <Label htmlFor="password" className="text-xs font-semibold text-stone-600 uppercase tracking-wider">Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    onChange={handleChange} 
-                    required 
+                  <Input
+                    id="password"
+                    type="password"
+                    onChange={handleChange}
+                    required
                     className="border-stone-200 focus-visible:ring-amber-800/20 focus-visible:border-amber-800 bg-stone-50/50"
                   />
                 </div>
@@ -191,6 +192,23 @@ const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
                   </svg>
                   Sign in with Google
                 </Button>
+                <div className="flex flex-col space-y-2 mt-4">
+                  <Button
+                    type="button"
+                    onClick={() => navigate("/admin-request")}
+                    variant="outline"
+                    className="w-full border-amber-800 text-amber-800 hover:bg-amber-50"
+                  >
+                    Request Admin Access
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => navigate("/admin-login")}
+                    className="w-full bg-amber-800 hover:bg-amber-900 text-white font-medium py-2 rounded-md transition-colors"
+                  >
+                    Admin Portal →
+                  </Button>
+                </div>
               </form>
 
               <div className="text-center text-sm text-stone-500 mt-6">

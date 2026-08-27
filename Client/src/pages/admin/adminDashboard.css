@@ -1,0 +1,335 @@
+/* ── Admin Dashboard – Light theme matching the Mellow Cafe app ── */
+
+:root {
+  --admin-bg: #faf9f7;
+  --admin-surface: #ffffff;
+  --admin-border: #e7e2da;
+  --admin-text: #1c1712;
+  --admin-muted: #6b6358;
+  --admin-accent: #92400e;   /* amber-800 */
+  --admin-accent-light: #fef3c7; /* amber-100 */
+  --admin-tab-active: #92400e;
+  --admin-shadow: 0 1px 4px rgba(0,0,0,.07);
+  --admin-radius: 10px;
+}
+
+/* ── Shell ── */
+.admin-dashboard {
+  min-height: 100vh;
+  background: var(--admin-bg);
+  font-family: 'Poppins', sans-serif;
+  color: var(--admin-text);
+}
+
+/* ── Header bar ── */
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-header .brand-logo {
+  width: 36px;
+  height: 36px;
+  background: var(--admin-accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+}
+
+.admin-header .brand-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--admin-accent);
+  letter-spacing: .3px;
+}
+
+.admin-header .brand-sub {
+  font-size: .72rem;
+  color: var(--admin-muted);
+  margin-top: -2px;
+}
+
+.admin-header .logout-btn {
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+  font-size: .8rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.admin-header .logout-btn:hover {
+  background: var(--admin-accent);
+  color: #fff;
+  border-color: var(--admin-accent);
+}
+
+/* ── Tab bar ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 32px;
+  background: var(--admin-surface);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.tab-bar button {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 14px 20px;
+  font-size: .85rem;
+  font-weight: 500;
+  color: var(--admin-muted);
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+
+.tab-bar button:hover {
+  color: var(--admin-accent);
+}
+
+.tab-bar button.active {
+  color: var(--admin-accent);
+  border-bottom-color: var(--admin-accent);
+  font-weight: 600;
+}
+
+/* ── Tab content area ── */
+.tab-content {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── Stat cards grid ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 20px;
+  box-shadow: var(--admin-shadow);
+}
+
+.stat-card .stat-label {
+  font-size: .72rem;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  margin-bottom: 8px;
+}
+
+.stat-card .stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1;
+}
+
+.stat-card .stat-icon {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+}
+
+/* ── Section card ── */
+.section-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 24px;
+  box-shadow: var(--admin-shadow);
+  margin-bottom: 24px;
+}
+
+.section-card h2 {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--admin-text);
+  margin: 0 0 18px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+/* ── Tables ── */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .83rem;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--admin-muted);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+  vertical-align: middle;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tr:hover td {
+  background: #faf6f0;
+}
+
+/* ── Inline edit inputs ── */
+.admin-table input[type="number"] {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  font-size: .82rem;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  background: var(--admin-accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.btn-primary:hover { background: #78350f; }
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.btn-danger:hover { background: #b91c1c; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--admin-muted);
+  border: 1px solid var(--admin-border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.btn-ghost:hover { background: var(--admin-accent-light); color: var(--admin-accent); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 600;
+}
+
+.badge-pending  { background: #fef3c7; color: #92400e; }
+.badge-approved { background: #d1fae5; color: #065f46; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
+.badge-paid     { background: #dbeafe; color: #1e3a8a; }
+
+/* ── Chart container ── */
+.chart-wrap {
+  position: relative;
+  max-height: 320px;
+}
+
+/* ── Loading/empty states ── */
+.admin-loading,
+.admin-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--admin-muted);
+  font-size: .85rem;
+}
+
+.admin-loading::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--admin-border);
+  border-top-color: var(--admin-accent);
+  border-radius: 50%;
+  margin: 12px auto 0;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: .82rem;
+  color: var(--admin-muted);
+}
+
+.pagination button {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: .8rem;
+  transition: all .2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: var(--admin-accent-light);
+  color: var(--admin-accent);
+}
+
+.pagination button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}

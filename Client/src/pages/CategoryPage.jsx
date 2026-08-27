@@ -2,11 +2,11 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { menuData } from '@/data/menu';
+import { useMenu } from '@/contexts/MenuContext';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, PlusCircle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, PlusCircle, ShoppingBag, Loader2 } from 'lucide-react';
 import FlavorDialog from '@/components/FlavorDialog';
 
 const containerVariants = {
@@ -23,8 +23,17 @@ const CategoryPage = () => {
   const { categoryId } = useParams();
   const { addToCart } = useCart();
   const { toast } = useToast();
-  const category = menuData.categories.find(c => c.id === categoryId);
-  const items = menuData.items[categoryId] || [];
+  const { categories, items: allItems, loading } = useMenu();
+  const category = categories.find(c => c.id === categoryId);
+  const items = allItems[categoryId] || [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-800" />
+      </div>
+    );
+  }
 
   if (!category) {
     return <div className="text-center py-10 text-stone-500">Category not found.</div>;

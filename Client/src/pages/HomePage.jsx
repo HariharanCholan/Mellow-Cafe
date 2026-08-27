@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { menuData } from '@/data/menu';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { useMenu } from '@/contexts/MenuContext';
 
 const categoryImages = {
   "hot-cold": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&auto=format&fit=crop",
@@ -32,6 +32,24 @@ const itemVariants = {
 };
 
 const HomePage = () => {
+  const { categories, loading, error } = useMenu();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-800" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
+        <p className="text-stone-500">Failed to load menu. Please refresh.</p>
+      </div>
+    );
+  }
+
   return (
     <>
       <Helmet>
@@ -65,7 +83,7 @@ const HomePage = () => {
             initial="hidden"
             animate="visible"
           >
-            {menuData.categories.map((category) => (
+            {categories.map((category) => (
               <motion.div key={category.id} variants={itemVariants}>
                 <Link to={`/category/${category.id}`} className="group block">
                   <div className="bg-white border border-stone-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1">

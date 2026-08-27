@@ -22,15 +22,14 @@ if (process.env.FIREBASE_PRIVATE_KEY) {
   }
 }
 
-// Models
-const User = require('./models/User.cjs');
-
 // Routes
 const profileRoutes = require('./routes/profile_routes.cjs');
 const authRoutes = require('./routes/authroutes.cjs');
 const orderRoutes = require('./routes/order_routes.cjs');
 const paymentRoutes = require('./routes/paymentRoutes.cjs');
 const otpRoutes = require('./routes/otpRoutes.cjs');
+const menuRoutes = require('./routes/menuRoutes.cjs');
+const adminRoutes = require('./routes/adminRoutes.cjs');
 
 const app = express();
 
@@ -49,6 +48,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/order', orderRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/menu', menuRoutes);
+app.use('/api/admin', adminRoutes);
 
 // OTP Routes
 app.use('/', otpRoutes);
@@ -63,32 +64,5 @@ app.use('/invoices', express.static(tmpInvoicesDir));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// Default admin creator function
-let adminCreated = false;
-async function createDefaultAdmin() {
-  if (adminCreated) return;
-  try {
-    const bcrypt = require('bcrypt');
-    const admin = await User.findOne({ email: 'admin01@example.com' });
-
-    if (!admin) {
-      const hashed = await bcrypt.hash('admin123', 10);
-      await User.create({
-        name: 'Admin',
-        email: 'admin01@example.com',
-        phone: '',
-        password: hashed,
-        role: 'admin'
-      });
-      console.log("Default Admin Created");
-    }
-    adminCreated = true;
-  } catch (err) {
-    console.error("Default admin creation check skipped/failed:", err.message);
-  }
-}
-
-createDefaultAdmin();
 
 module.exports = app;

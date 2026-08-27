@@ -1,36 +1,53 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const User = require("../models/User.cjs");
 
 const router = express.Router();
+
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const SUPER_ADMIN_EMAIL = "hariiiiii0519@gmail.com";
+
+/** Helper: signs a JWT and ensures super_admin email always gets that role */
+async function signTokenForUser(user) {
+  // Force super_admin role for the designated email
+  let role = user.role || "user";
+  if (user.email === SUPER_ADMIN_EMAIL && role !== "super_admin") {
+    role = "super_admin";
+    await User.findByIdAndUpdate(user._id, { role: "super_admin" });
+  }
+
+  const payload = {
+    userId: user._id,
+    email: user.email,
+    name: user.name,
+    role,
+    picture: user.picture || null,
+  };
+
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  return { token, role };
+}
 
 /* ---------------- REGISTER ---------------- */
 router.post("/register", async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
-    // 🔍 Check if user already exists
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      // ❌ If user already registered with Google
       if (existingUser.provider === "google") {
         return res.status(400).json({
           message: "This email is already registered using Google. Please login with Google.",
         });
       }
-
-      // ❌ Normal duplicate
-      return res.status(400).json({
-        message: "User already exists. Please login.",
-      });
+      return res.status(400).json({ message: "User already exists. Please login." });
     }
 
-    // 🔐 Hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // ✅ Create user
     const user = await User.create({
       name,
       email,
@@ -39,11 +56,7 @@ router.post("/register", async (req, res) => {
       provider: "local",
     });
 
-    res.status(201).json({
-      message: "User registered",
-      user,
-    });
-
+    res.status(201).json({ message: "User registered", user });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ message: "Server error" });
@@ -61,7 +74,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "No account found" });
     }
 
-    // ❌ If Google account tries password login
     if (user.provider === "google") {
       return res.status(400).json({
         message: "This account was created using Google. Please login with Google.",
@@ -69,16 +81,24 @@ router.post("/login", async (req, res) => {
     }
 
     const match = await bcrypt.compare(password, user.password);
-
     if (!match) {
       return res.status(400).json({ message: "Incorrect password" });
     }
 
+    const { token, role } = await signTokenForUser(user);
+
     res.json({
       message: "Login success",
-      user,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        picture: user.picture,
+        role,
+      },
     });
-
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
@@ -88,46 +108,34 @@ router.post("/login", async (req, res) => {
 /* ---------------- GOOGLE LOGIN ---------------- */
 router.post("/google-login", async (req, res) => {
   try {
-    console.log("Incoming:", req.body); // DEBUG
-
     const { email, name, picture } = req.body;
 
-    // 🔒 Safety check
     if (!email) {
-      return res.status(400).json({
-        message: "Email missing from Google",
-      });
+      return res.status(400).json({ message: "Email missing from Google" });
     }
 
     let user = await User.findOne({ email });
 
-    // ✅ If user exists → login
-    if (user) {
-      return res.json({
-        message: "Google login success",
-        user,
-      });
+    if (!user) {
+      user = await User.create({ name, email, provider: "google", picture });
     }
 
-    // ✅ Create new user
-    user = await User.create({
-      name,
-      email,
-      provider: "google",
-      picture,
-    });
+    const { token, role } = await signTokenForUser(user);
 
     res.json({
       message: "Google login success",
-      user,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        picture: user.picture,
+        role,
+      },
     });
-
   } catch (err) {
     console.error("🔥 FULL ERROR:", err);
-
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 });
 
