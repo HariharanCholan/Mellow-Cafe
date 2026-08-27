@@ -211,7 +211,10 @@ router.post(
         { expiresIn: "7d" }
       );
 
-      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+      const clientUrl =
+        process.env.CLIENT_URL ||
+        (req.headers.origin && !req.headers.origin.includes("localhost") ? req.headers.origin : null) ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:5173");
       const setupLink = `${clientUrl}/admin/setup-password?token=${setupToken}`;
 
       // Send invite / setup email

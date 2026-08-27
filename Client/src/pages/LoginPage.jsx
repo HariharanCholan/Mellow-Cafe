@@ -18,6 +18,7 @@ import { signInWithPopup } from "firebase/auth";
 const LoginPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login: authLogin } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",

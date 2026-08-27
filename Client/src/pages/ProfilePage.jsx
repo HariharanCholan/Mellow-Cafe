@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { motion } from 'framer-motion';
 import { User, ShoppingBag, Heart, RotateCcw, Plus, LogOut } from 'lucide-react';
 import API_BASE_URL from "@/config/api";
@@ -11,20 +12,21 @@ const ProfilePage = () => {
   const [orders, setOrders] = useState([]);
   const [favourites, setFavourites] = useState([]);
   const [showOrders, setShowOrders] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   const navigate = useNavigate();
   const { addToCart, clearCart } = useCart() || {};
+  const { user: authUser, logout, loading: authLoading } = useAuth();
 
-  const getUser = () => {
+  const user = authUser || (() => {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = localStorage.getItem("mellowCafeUser") || localStorage.getItem("user");
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
     }
-  };
+  })();
 
-  const user = getUser();
   const email = user?.email;
 
   const fetchProfile = async () => {
@@ -32,9 +34,17 @@ const ProfilePage = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/profile/${email}`);
       const data = await res.json();
-      setProfile(data.profile);
+      if (data.profile) {
+        setProfile(data.profile);
+      } else {
+        // Fallback to local user data if backend profile isn't populated
+        setProfile(user);
+      }
     } catch (err) {
       console.error("Profile fetch error:", err);
+      setProfile(user);
+    } finally {
+      setLoadingProfile(false);
     }
   };
 
@@ -47,7 +57,7 @@ const ProfilePage = () => {
 
       const counts = {};
       data.orders?.forEach(order => {
-        order.items.forEach(item => {
+        order.items?.forEach(item => {
           counts[item.name] = (counts[item.name] || 0) + 1;
         });
       });
@@ -64,13 +74,14 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!email) {
       navigate("/login");
       return;
     }
     fetchProfile();
     fetchOrders();
-  }, [email]);
+  }, [email, authLoading]);
 
   const handleReorder = (items) => {
     clearCart();
@@ -100,10 +111,9 @@ const ProfilePage = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("user");
+    logout();
     sessionStorage.removeItem("splashShown");
-    navigate('/splash');
+    navigate('/login');
   };
 
   if (!profile) {
