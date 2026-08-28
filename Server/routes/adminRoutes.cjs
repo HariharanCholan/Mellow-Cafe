@@ -236,7 +236,7 @@ router.post(
           type: "admin_setup",
         },
         JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: "1d" }
       );
 
       const clientUrl =
@@ -333,28 +333,137 @@ router.post(
   async (req, res) => {
     try {
       const { role } = req.body;
+
       const validRoles = ["worker", "staff", "admin", "super_admin"];
+
       if (!role || !validRoles.includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
       }
 
       const request = await AdminRequest.findById(req.params.id);
-      if (!request) return res.status(404).json({ message: "Request not found" });
 
+      if (!request) {
+        return res.status(404).json({ message: "Request not found" });
+      }
+
+      // Store the old role before changing it
+      const oldRole = request.assignedRole || "staff";
+
+      // Update role in AdminRequest
       request.assignedRole = role;
       await request.save();
 
       // Update role in User database
-      await User.findOneAndUpdate(
+      const user = await User.findOneAndUpdate(
         { email: request.email },
         { role },
-        { upsert: false }
+        { upsert: false, new: true }
       );
 
-      res.json({ message: `Role successfully updated to ${role}`, role });
+      if (!user) {
+        return res.status(404).json({
+          message: "User account not found",
+        });
+      }
+
+      // Send role-change email
+      try {
+        await sendEmail({
+          to: request.email,
+
+          subject: "Mellow Café - Your Account Role Has Been Updated",
+
+          text: `Hello ${request.name},
+
+Your role in the Mellow Café system has been successfully updated.
+
+Previous Role: ${oldRole}
+New Role: ${role}
+
+You can now access the features and permissions associated with your new role.
+
+Regards,
+Mellow Café Team ☕`,
+
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; background: #faf9f7; border: 1px solid #e7e2da; border-radius: 10px;">
+
+              <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #92400e; margin: 0; font-size: 24px;">
+                  ☕ Mellow Café
+                </h1>
+
+                <p style="color: #78716c; margin: 4px 0 0 0; font-size: 14px;">
+                  Staff & Admin Portal
+                </p>
+              </div>
+
+              <div style="background: #ffffff; padding: 24px; border-radius: 8px; border: 1px solid #e7e2da;">
+
+                <h2 style="color: #1c1917; font-size: 18px; margin-top: 0;">
+                  Hello ${request.name},
+                </h2>
+
+                <p style="color: #44403c; line-height: 1.6; font-size: 14px;">
+                  Your role in the <strong>Mellow Café</strong> system
+                  has been successfully updated.
+                </p>
+
+                <div style="background: #fef3c7; border-left: 4px solid #92400e; padding: 14px 16px; margin: 20px 0; border-radius: 4px;">
+
+                  <p style="margin: 0 0 8px 0; color: #44403c; font-size: 14px;">
+                    <strong>Previous Role:</strong>
+                    <span style="text-transform: uppercase;">
+                      ${oldRole}
+                    </span>
+                  </p>
+
+                  <p style="margin: 0; color: #92400e; font-size: 14px;">
+                    <strong>New Role:</strong>
+                    <span style="text-transform: uppercase;">
+                      ${role}
+                    </span>
+                  </p>
+
+                </div>
+
+                <p style="color: #44403c; line-height: 1.6; font-size: 14px;">
+                  You can now access the features and permissions
+                  associated with your new role.
+                </p>
+
+                <p style="color: #78716c; font-size: 13px; margin-top: 24px;">
+                  If you believe this change was made in error,
+                  please contact your administrator.
+                </p>
+
+              </div>
+
+              <p style="text-align: center; color: #a8a29e; font-size: 12px; margin-top: 20px;">
+                Mellow Café Team ☕
+              </p>
+
+            </div>
+          `,
+        });
+
+        console.log(`📧 Role change email sent to ${request.email}`);
+      } catch (emailErr) {
+        // Role update succeeded even if email sending fails
+        console.error("⚠️ Role updated but email failed:", emailErr);
+      }
+
+      res.json({
+        message: `Role successfully updated to ${role}`,
+        role,
+      });
+
     } catch (err) {
       console.error("Change role error:", err);
-      res.status(500).json({ message: "Server error" });
+
+      res.status(500).json({
+        message: "Server error",
+      });
     }
   }
 );
@@ -370,18 +479,125 @@ router.post(
   async (req, res) => {
     try {
       const request = await AdminRequest.findById(req.params.id);
-      if (!request) return res.status(404).json({ message: "Request not found" });
 
+      if (!request) {
+        return res.status(404).json({
+          message: "Request not found",
+        });
+      }
+
+      // Save these before deleting the user
+      const userEmail = request.email;
+      const userName = request.name || "";
+
+      // Mark access as revoked
       request.status = "revoked";
       await request.save();
 
-      // Remove user account or remove admin role from DB
-      await User.findOneAndDelete({ email: request.email });
+      // Delete user account from Users collection
+      const deletedUser = await User.findOneAndDelete({
+        email: userEmail,
+      });
 
-      res.json({ message: `Access revoked and user ${request.email} removed from database.` });
+      if (!deletedUser) {
+        return res.status(404).json({
+          message: "User account not found",
+        });
+      }
+
+      // Send access revoked email
+      try {
+        await sendEmail({
+          to: userEmail,
+
+          subject: "Mellow Café - Your Access Has Been Revoked",
+
+          text: `Hello ${userName},
+
+Your access to the Mellow Café system has been successfully revoked.
+
+Your user account has been removed from the system, and you will no longer be able to access the Staff & Admin Portal.
+
+If you believe this action was taken by mistake, please contact your administrator.
+
+Regards,
+Mellow Café Team ☕`,
+
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; background: #faf9f7; border: 1px solid #e7e2da; border-radius: 10px;">
+
+              <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #92400e; margin: 0; font-size: 24px;">
+                  ☕ Mellow Café
+                </h1>
+
+                <p style="color: #78716c; margin: 4px 0 0 0; font-size: 14px;">
+                  Staff & Admin Portal
+                </p>
+              </div>
+
+              <div style="background: #ffffff; padding: 24px; border-radius: 8px; border: 1px solid #e7e2da;">
+
+                <h2 style="color: #1c1917; font-size: 18px; margin-top: 0;">
+                  Hello ${userName},
+                </h2>
+
+                <p style="color: #44403c; line-height: 1.6; font-size: 14px;">
+                  Your access to the <strong>Mellow Café</strong> system
+                  has been successfully revoked.
+                </p>
+
+                <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 14px 16px; margin: 20px 0; border-radius: 4px;">
+
+                  <p style="margin: 0; color: #991b1b; font-weight: 600; font-size: 14px;">
+                    Access Revoked
+                  </p>
+
+                  <p style="margin: 8px 0 0 0; color: #44403c; font-size: 14px;">
+                    Your user account has been removed from the system.
+                  </p>
+
+                </div>
+
+                <p style="color: #44403c; line-height: 1.6; font-size: 14px;">
+                  You will no longer be able to access the
+                  <strong>Staff & Admin Portal</strong>.
+                </p>
+
+                <p style="color: #78716c; font-size: 13px; line-height: 1.6; margin-top: 24px;">
+                  If you believe this action was taken by mistake,
+                  please contact your administrator.
+                </p>
+
+              </div>
+
+              <p style="text-align: center; color: #a8a29e; font-size: 12px; margin-top: 20px;">
+                Mellow Café Team ☕
+              </p>
+
+            </div>
+          `,
+        });
+
+        console.log(`📧 Access revoked email sent to ${userEmail}`);
+      } catch (emailErr) {
+        // Access revocation succeeded even if email sending fails
+        console.error(
+          "⚠️ Access revoked but email failed:",
+          emailErr
+        );
+      }
+
+      res.json({
+        message: `Access revoked and user ${userEmail} removed from database.`,
+      });
+
     } catch (err) {
       console.error("Revoke access error:", err);
-      res.status(500).json({ message: "Server error" });
+
+      res.status(500).json({
+        message: "Server error",
+      });
     }
   }
 );
@@ -537,8 +753,8 @@ router.post(
       const formattedOptions = Array.isArray(options)
         ? options
         : typeof options === "string" && options.trim()
-        ? options.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
+          ? options.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
 
       const newItem = await MenuItem.create({
         itemId: nextItemId,
